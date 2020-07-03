@@ -9,6 +9,13 @@ from pathlib import Path
 import imageio
 
 
+def get_video_meta_data(filepath, **reader_kwargs):
+    video_bytes = read_fn(filepath, **reader_kwargs)
+
+    with imageio.get_reader(video_bytes, "ffmpeg") as reader:
+        return reader.get_meta_data()
+
+
 def bytes2video(videobytes):
     with imageio.get_reader(videobytes, "ffmpeg") as reader:
         for image in reader:
@@ -57,13 +64,21 @@ def cartoonize(load_folder, save_folder, model_path):
     # check if it is a video
     if video_file:
         name_list = read_video(load_folder)
+        metadata = get_video_meta_data(load_folder)
+        total = metadata["nframes"]
+        fps = metadata["fps"]
+        duration = metadata["duration"]
+        # print(total, metadata, fps * duration)
+        if total == float("inf"):
+            total = int(fps * duration)
     else:
         name_list = os.listdir(load_folder)
-
-    for i, name in enumerate(tqdm(name_list)):
+        total = len(name_list)
+    for i, name in enumerate(tqdm(name_list, total=total)):
         # try:
         if video_file:
             image = name
+            image = image[..., ::-1]
             save_path = os.path.join(save_folder, f"frame{i:05d}.png")
         else:
             load_path = os.path.join(load_folder, name)
